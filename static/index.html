@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>librosa 专业音频分析仪</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Noto+Serif+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:    #0a0b09;
+  --bg2:   #111210;
+  --bg3:   #181917;
+  --bg4:   #1f2120;
+  --bd:    rgba(255,255,255,0.06);
+  --bd2:   rgba(255,255,255,0.11);
+  --txt:   #dedad0;
+  --txt2:  #7a7870;
+  --txt3:  #464540;
+  --grn:   #a8e060;
+  --teal:  #60c8a0;
+  --amb:   #e8b040;
+  --coral: #e06050;
+  --blue:  #50a0e8;
+  --pur:   #9868e8;
+  --pink:  #e068a0;
+  --mono:  'IBM Plex Mono', monospace;
+  --serif: 'Noto Serif SC', serif;
+  --r: 8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--mono);background:var(--bg);color:var(--txt);min-height:100vh;padding:2rem 1.5rem 6rem;line-height:1.6}
+.wrap{max-width:960px;margin:0 auto}
+
+/* header */
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:2rem}
+.logo{font-family:var(--serif);font-size:1.5rem;font-weight:300;letter-spacing:.03em}
+.logo em{color:var(--grn);font-style:normal}
+.tagline{font-size:.62rem;color:var(--txt3);letter-spacing:.14em;text-transform:uppercase;margin-top:.25rem}
+.badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.58rem;padding:.15rem .6rem;border-radius:20px;border:1px solid var(--teal);color:var(--teal);letter-spacing:.07em;margin-top:.45rem}
+
+/* api box */
+.api-box{background:var(--bg2);border:1px solid var(--bd2);border-radius:var(--r);padding:.9rem 1.1rem;min-width:260px;max-width:320px}
+.api-ttl{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--txt3);margin-bottom:.5rem}
+.api-row{display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem}
+.api-in{flex:1;background:var(--bg3);border:1px solid var(--bd2);border-radius:5px;padding:.28rem .6rem;font-family:var(--mono);font-size:.7rem;color:var(--txt);outline:none;transition:border-color .2s}
+.api-in:focus{border-color:var(--grn)}
+.api-in::placeholder{color:var(--txt3)}
+.model-sel{background:var(--bg3);border:1px solid var(--bd2);border-radius:5px;padding:.28rem .5rem;font-family:var(--mono);font-size:.68rem;color:var(--txt);outline:none;cursor:pointer;width:100%}
+.api-hint{font-size:.58rem;color:var(--txt3);margin-top:.4rem;line-height:1.6}
+.api-hint a{color:var(--teal);text-decoration:none}
+.api-status{font-size:.6rem;margin-top:.3rem;min-height:.8em}
+.api-status.ok{color:var(--teal)}
+.api-status.err{color:var(--coral)}
+
+/* drop */
+.drop{border:1px dashed var(--bd2);border-radius:var(--r);padding:2.5rem 2rem;text-align:center;cursor:pointer;background:var(--bg2);position:relative;transition:border-color .2s,background .2s}
+.drop:hover,.drop.over{border-color:var(--grn);background:var(--bg3)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-g{font-size:2.2rem;margin-bottom:.8rem;animation:breathe 3s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.35}}
+.drop-t{font-size:.85rem;margin-bottom:.3rem}
+.drop-s{font-size:.65rem;color:var(--txt3)}
+
+/* player */
+.player{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:.8rem 1rem;margin-top:.65rem;display:flex;align-items:center;gap:.8rem}
+.pbtn{width:34px;height:34px;border-radius:50%;border:1px solid var(--bd2);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--txt);flex-shrink:0;transition:border-color .2s}
+.pbtn:hover{border-color:var(--grn)}
+.pbtn svg{width:12px;height:12px;fill:currentColor}
+.pmeta{flex:1;min-width:0}
+.pname{font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:.18rem}
+.ptime{font-size:.6rem;color:var(--txt3)}
+.seek{flex:2;-webkit-appearance:none;height:2px;border-radius:1px;background:var(--bg4);outline:none;cursor:pointer;accent-color:var(--grn)}
+
+/* visualizer */
+#visualizer{height:280px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-top:.6rem;position:relative}
+#visualizer canvas{width:100%;height:100%;display:block}
+.vis-mode-bar{position:absolute;top:8px;right:8px;display:flex;gap:4px;z-index:2}
+.vis-mode-btn{font-family:var(--mono);font-size:.5rem;padding:.2rem .5rem;background:rgba(0,0,0,.5);border:1px solid var(--bd2);border-radius:4px;color:var(--txt3);cursor:pointer;transition:all .2s}
+.vis-mode-btn.on{border-color:var(--grn);color:var(--grn)}
+.vis-mode-btn:hover{border-color:var(--txt2);color:var(--txt2)}
+
+/* steps */
+.steps{display:flex;margin-top:.6rem;border-radius:var(--r);overflow:hidden;background:var(--bg3);border:1px solid var(--bd)}
+.step{flex:1;padding:.38rem .3rem;font-size:.55rem;text-align:center;color:var(--txt3);border-right:1px solid var(--bd);letter-spacing:.05em;text-transform:uppercase;transition:background .3s,color .3s}
+.step:last-child{border-right:none}
+.step.done{background:rgba(168,224,96,.09);color:var(--grn)}
+.step.active{background:rgba(168,224,96,.04);color:var(--txt2)}
+
+.btn{margin-top:.65rem;width:100%;padding:.7rem;background:transparent;border:1px solid var(--grn);border-radius:var(--r);color:var(--grn);font-family:var(--mono);font-size:.78rem;letter-spacing:.06em;cursor:pointer;transition:background .2s,color .2s}
+.btn:hover:not(:disabled){background:var(--grn);color:var(--bg)}
+.btn:disabled{opacity:.28;cursor:not-allowed}
+.status{font-size:.65rem;color:var(--txt3);text-align:center;margin-top:.45rem;min-height:1em}
+.status.err{color:var(--coral)}
+.spin{display:inline-block;width:10px;height:10px;border:1.5px solid var(--bd2);border-top-color:var(--grn);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:4px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* results */
+.results{margin-top:1.8rem}
+.tabs{display:flex;border-bottom:1px solid var(--bd);margin-bottom:1.3rem;overflow-x:auto}
+.tab{padding:.45rem .9rem;font-family:var(--mono);font-size:.65rem;letter-spacing:.1em;color:var(--txt3);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;text-transform:uppercase;white-space:nowrap;transition:color .2s,border-color .2s}
+.tab:hover{color:var(--txt2)}
+.tab.on{color:var(--grn);border-bottom-color:var(--grn)}
+.panel{display:none}
+.panel.on{display:block}
+
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:.95rem 1.1rem}
+.lbl{font-size:.58rem;letter-spacing:.13em;text-transform:uppercase;color:var(--txt3);margin-bottom:.5rem}
+.big{font-size:1.9rem;font-weight:300;line-height:1}
+.sub{font-size:.68rem;color:var(--txt3);margin-top:.28rem}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem}
+.mt{margin-top:.6rem}
+
+.sum-text{font-family:var(--serif);font-size:.88rem;line-height:1.9;color:var(--txt2)}
+.badges{display:flex;flex-wrap:wrap;gap:.38rem;margin-top:.8rem}
+.bdg{font-size:.58rem;padding:.16rem .6rem;border-radius:20px;border:1px solid var(--bd2);color:var(--txt3);letter-spacing:.05em}
+.bdg.hi{border-color:var(--teal);color:var(--teal)}
+.bdg.grn{border-color:var(--grn);color:var(--grn)}
+
+.chords{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.45rem}
+.chord{font-size:.75rem;padding:.2rem .7rem;border-radius:5px;border:1px solid var(--bd2);color:var(--txt);background:var(--bg3)}
+.chord.root{border-color:var(--grn);color:var(--grn)}
+
+.bar-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.48rem}
+.bar-lbl{font-size:.62rem;color:var(--txt3);min-width:130px}
+.bar-tr{flex:1;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden}
+.bar-fl{height:100%;border-radius:2px;transition:width .85s cubic-bezier(.4,0,.2,1)}
+.bar-val{font-size:.6rem;color:var(--txt3);min-width:34px;text-align:right}
+
+/* emotion cards */
+.emo{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:.85rem .95rem}
+.emo.top{border-color:var(--teal)}
+.emo-nm{font-size:.78rem;font-weight:500;margin-bottom:.42rem}
+.emo-tr{height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:.32rem}
+.emo-fl{height:100%;border-radius:2px}
+.emo-pct{font-size:.6rem;color:var(--txt3)}
+.emo-desc{font-size:.63rem;color:var(--txt3);margin-top:.38rem;line-height:1.55}
+
+/* instrument */
+.inst-item{margin-bottom:.8rem}
+.inst-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.18rem}
+.inst-nm{font-size:.78rem;min-width:88px}
+.inst-rsn{font-size:.6rem;color:var(--txt3);line-height:1.5;padding-left:88px}
+
+.kws{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.65rem}
+.kw{font-size:.64rem;padding:.16rem .55rem;border-radius:20px;background:var(--bg3);border:1px solid var(--bd);color:var(--txt2)}
+
+.tech-g{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin-top:.65rem}
+.tech-i{background:var(--bg3);border-radius:5px;padding:.5rem .7rem}
+.tech-k{font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);margin-bottom:.16rem}
+.tech-v{font-size:.78rem;color:var(--teal)}
+
+.note-text{font-size:.73rem;color:var(--txt2);line-height:1.8;margin-top:.45rem}
+.deep-text{font-family:var(--serif);font-size:.85rem;color:var(--txt2);line-height:1.95;margin-top:.4rem}
+
+#contour-c{display:block;margin:.6rem auto 0}
+#chroma-c{display:block;margin:.7rem auto 0}
+.piano-r{display:flex;gap:2px;align-items:flex-end;height:48px;margin-top:.7rem}
+.pr-b{flex:1;border-radius:3px 3px 0 0;min-width:7px}
+
+.similar{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+.sim-tag{font-size:.65rem;padding:.18rem .6rem;border-radius:5px;background:var(--bg3);border:1px solid var(--bd2);color:var(--txt2);font-style:italic}
+
+.hr{border:none;border-top:1px solid var(--bd);margin:.9rem 0}
+.hidden{display:none!important}
+.no-ai{font-size:.72rem;color:var(--txt3);font-style:italic;padding:.5rem 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <div class="logo">librosa <em>音频分析仪</em></div>
+    <div class="tagline">Professional Audio Analysis · Windows / macOS / Linux</div>
+    <span class="badge">librosa · 全平台兼容</span>
+  </div>
+  <div class="api-box">
+    <div class="api-ttl">OpenAI API Key（可选，用于 AI 深度分析）</div>
+    <div class="api-row">
+      <input class="api-in" id="api-key" type="password" placeholder="sk-..." oninput="checkKey()">
+    </div>
+    <select class="model-sel" id="model-sel" onchange="saveCfg()">
+      <option value="deepseek-chat">DeepSeek Chat（推荐·极便宜）</option>
+      <option value="deepseek-reasoner">DeepSeek R1（深度推理）</option>
+      <option value="gpt-4o-mini">GPT-4o mini</option>
+      <option value="gpt-4o">GPT-4o</option>
+      <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+    </select>
+    <div class="api-hint">Key 自动保存在浏览器中 · 不填也可运行（仅 librosa 数据）<br>
+      DeepSeek: <a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com</a>（便宜）<br>
+      OpenAI: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>
+    </div>
+    <div class="api-status" id="api-status"></div>
+  </div>
+</header>
+
+<div class="drop" id="drop">
+  <input type="file" accept="audio/*" onchange="onFile(this.files[0])">
+  <div class="drop-g">♬</div>
+  <div class="drop-t">拖放音频文件，或点击选择</div>
+  <div class="drop-s">MP3 · WAV · OGG · FLAC · M4A · AAC · OPUS</div>
+</div>
+
+<div id="pw" class="hidden">
+  <div class="player">
+    <button class="pbtn" onclick="togglePlay()">
+      <svg viewBox="0 0 24 24" id="pico"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+    <div class="pmeta">
+      <div class="pname" id="pname">—</div>
+      <div class="ptime" id="ptime">0:00 / 0:00</div>
+    </div>
+    <input type="range" class="seek" id="seek" min="0" max="100" value="0" step="0.1" oninput="onSeek(this.value)">
+  </div>
+  <div id="visualizer">
+    <canvas id="visc"></canvas>
+    <div class="vis-mode-bar">
+      <button class="vis-mode-btn on" data-mode="circular" onclick="setVisMode('circular',this)">环形</button>
+      <button class="vis-mode-btn" data-mode="bars" onclick="setVisMode('bars',this)">柱状</button>
+      <button class="vis-mode-btn" data-mode="wave" onclick="setVisMode('wave',this)">波形</button>
+    </div>
+  </div>
+  <div class="steps">
+    <div class="step" id="s0">① 上传</div>
+    <div class="step" id="s1">② librosa</div>
+    <div class="step" id="s2">③ 调性</div>
+    <div class="step" id="s3">④ AI分析</div>
+    <div class="step" id="s4">⑤ 完成</div>
+  </div>
+  <button class="btn" id="abtn" onclick="doAnalyze()">▶ 开始专业分析</button>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="results hidden" id="results">
+  <div class="tabs">
+    <button class="tab on"  onclick="goTab('overview',this)">概览</button>
+    <button class="tab"     onclick="goTab('theory',this)">乐理</button>
+    <button class="tab"     onclick="goTab('timbre',this)">音色</button>
+    <button class="tab"     onclick="goTab('emotion',this)">情感</button>
+    <button class="tab"     onclick="goTab('instrument',this)">乐器</button>
+    <button class="tab"     onclick="goTab('tech',this)">原始数据</button>
+  </div>
+
+  <!-- Overview -->
+  <div class="panel on" id="panel-overview">
+    <div class="card" id="ov-ai-card">
+      <div class="lbl">AI 综合评述（librosa 精细特征驱动）</div>
+      <div class="sum-text" id="ov-sum">—</div>
+      <div class="badges" id="ov-badges"></div>
+    </div>
+    <div class="g4 mt">
+      <div class="card"><div class="lbl">调性</div><div class="big" id="ov-key">—</div><div class="sub" id="ov-scale">—</div></div>
+      <div class="card"><div class="lbl">速度</div><div class="big" id="ov-bpm">—</div><div class="sub" id="ov-feel">—</div></div>
+      <div class="card"><div class="lbl">动态范围</div><div class="big" id="ov-dyn">—</div><div class="sub" id="ov-dyn-s">—</div></div>
+      <div class="card"><div class="lbl">可舞性</div><div class="big" id="ov-dance">—</div><div class="sub" id="ov-dance-s">—</div></div>
+    </div>
+    <div class="card mt">
+      <div class="lbl">音乐结构分析</div>
+      <div class="deep-text" id="ov-structure">—</div>
+    </div>
+    <div class="card mt">
+      <div class="lbl">响度动态轮廓（10段时间序列）</div>
+      <canvas id="contour-c" width="900" height="120"></canvas>
+    </div>
+    <div class="g2 mt">
+      <div class="card">
+        <div class="lbl">风格 · 类似艺术家</div>
+        <div style="font-size:.82rem;color:var(--txt2);margin-top:.3rem;margin-bottom:.5rem" id="ov-style">—</div>
+        <div class="similar" id="ov-similar"></div>
+      </div>
+      <div class="card">
+        <div class="lbl">制作人建议</div>
+        <div class="note-text" id="ov-notes">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory -->
+  <div class="panel" id="panel-theory">
+    <div class="card">
+      <div class="lbl">调性与和声分析</div>
+      <div class="deep-text" id="th-key-ana">—</div>
+    </div>
+    <div class="card mt">
+      <div class="lbl">节奏与律动分析</div>
+      <div class="deep-text" id="th-rhy-ana">—</div>
+    </div>
+    <div class="card mt">
+      <div class="lbl">旋律与叙事性分析</div>
+      <div class="deep-text" id="th-mel-ana">—</div>
+    </div>
+    <div class="card mt">
+      <div class="lbl">推断和弦进行</div>
+      <div class="chords" id="th-chords"></div>
+      <div style="font-size:.75rem;color:var(--txt2);margin-top:.65rem;line-height:1.7" id="th-prog">—</div>
+    </div>
+    <div class="card mt">
+      <div class="lbl">色度轮（Chroma · librosa 精确计算）</div>
+      <canvas id="chroma-c" width="220" height="220"></canvas>
+      <div class="piano-r" id="piano-r" style="margin-top:.5rem"></div>
+    </div>
+  </div>
+
+  <!-- Timbre -->
+  <div class="panel" id="panel-timbre">
+    <div class="card">
+      <div class="lbl">音色与织体分析</div>
+      <div class="deep-text" id="tb-ana">—</div>
+    </div>
+    <div class="card mt">
+      <div class="lbl">动态与情感张力分析</div>
+      <div class="deep-text" id="tb-dyn-ana">—</div>
+    </div>
+    <div class="card mt">
+      <div class="lbl">频谱景观</div>
+      <div class="deep-text" id="tb-freq-prof" style="margin-bottom:.75rem">—</div>
+      <div id="th-freq8"></div>
+    </div>
+  </div>
+
+  <!-- Emotion -->
+  <div class="panel" id="panel-emotion">
+    <div class="g3" id="em-grid" style="margin-bottom:.6rem"></div>
+    <div class="card">
+      <div class="lbl">情感关键词</div>
+      <div class="kws" id="em-kws"></div>
+    </div>
+  </div>
+
+  <!-- Instrument -->
+  <div class="panel" id="panel-instrument">
+    <div class="card">
+      <div class="lbl">乐器识别（基于 librosa MFCC 40维 + 谱特征）</div>
+      <div id="inst-list" style="margin-top:.65rem"></div>
+    </div>
+  </div>
+
+  <!-- Tech -->
+  <div class="panel" id="panel-tech">
+    <div class="card">
+      <div class="lbl">librosa 原始特征值</div>
+      <div class="tech-g" id="tech-g"></div>
+      <div class="hr"></div>
+      <div class="lbl">MFCC 均值（40维，音色指纹）</div>
+      <div id="mfcc-bars" style="margin-top:.4rem"></div>
+      <div class="hr"></div>
+      <div class="lbl">Chroma 向量（12音高类）</div>
+      <div id="chroma-bars" style="margin-top:.4rem"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const CMAP={blue:'#50a0e8',amber:'#e8b040',teal:'#60c8a0',coral:'#e06050',purple:'#9868e8',pink:'#e068a0'};
+const B8COLORS=['#e06050','#e06050','#e8b040','#60c8a0','#50a0e8','#50a0e8','#9868e8','#9868e8'];
+const ICOLORS=['#50a0e8','#60c8a0','#e8b040','#e06050'];
+
+// ── Audio Visualizer ──
+let actx,liveAn,liveSrc,audioEl,playing=false,rafId;
+let visMode='circular';
+const visc=document.getElementById('visc'),visCtx=visc.getContext('2d');
+
+['dragover','dragleave','drop'].forEach(ev=>{
+  document.getElementById('drop').addEventListener(ev,e=>{
+    e.preventDefault();
+    if(ev==='dragover') e.currentTarget.classList.add('over');
+    else if(ev==='dragleave') e.currentTarget.classList.remove('over');
+    else { e.currentTarget.classList.remove('over'); e.dataTransfer.files[0]&&onFile(e.dataTransfer.files[0]); }
+  });
+});
+
+function onFile(f){
+  if(!f) return;
+  window._af=f;
+  document.getElementById('pname').textContent=f.name;
+  const url=URL.createObjectURL(f);
+  if(!actx) actx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioEl){audioEl.pause();cancelAnimationFrame(rafId);}
+  audioEl=new Audio(url);audioEl.crossOrigin='anonymous';
+  liveAn=actx.createAnalyser();liveAn.fftSize=2048;
+  liveSrc=actx.createMediaElementSource(audioEl);
+  liveSrc.connect(liveAn);liveAn.connect(actx.destination);
+  audioEl.addEventListener('loadedmetadata',()=>{document.getElementById('seek').max=audioEl.duration;refreshTime()});
+  audioEl.addEventListener('timeupdate',()=>{refreshTime();document.getElementById('seek').value=audioEl.currentTime});
+  audioEl.addEventListener('ended',()=>{playing=false;setIco(false);cancelAnimationFrame(rafId)});
+  document.getElementById('pw').classList.remove('hidden');
+  document.getElementById('results').classList.add('hidden');
+  resetSteps();drawIdle();
+}
+function togglePlay(){
+  if(!audioEl) return;
+  if(actx.state==='suspended') actx.resume();
+  playing?(audioEl.pause(),cancelAnimationFrame(rafId)):(audioEl.play(),loopDraw());
+  playing=!playing;setIco(playing);
+}
+function setIco(p){document.getElementById('pico').innerHTML=p?'<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>':'<path d="M8 5v14l11-7z"/>';}
+function onSeek(v){audioEl&&(audioEl.currentTime=+v)}
+function refreshTime(){const f=s=>Math.floor(s/60)+':'+(Math.floor(s%60)+'').padStart(2,'0');document.getElementById('ptime').textContent=f(audioEl.currentTime)+' / '+f(audioEl.duration||0)}
+function drawIdle(){visResize();visCtx.clearRect(0,0,visc.width,visc.height)}
+function loopDraw(){rafId=requestAnimationFrame(loopDraw);drawVisualizer()}
+function visResize(){visc.width=visc.offsetWidth*devicePixelRatio;visc.height=visc.offsetHeight*devicePixelRatio}
+function setVisMode(m,el){
+  visMode=m;
+  document.querySelectorAll('.vis-mode-btn').forEach(b=>b.classList.remove('on'));
+  if(el) el.classList.add('on');
+}
+
+function drawVisualizer(){
+  visResize();
+  const W=visc.width,H=visc.height,cx=W/2,cy=H/2;
+  const bufLen=liveAn.frequencyBinCount;
+  const freqData=new Uint8Array(bufLen);
+  const timeData=new Uint8Array(bufLen);
+  liveAn.getByteFrequencyData(freqData);
+  liveAn.getByteTimeDomainData(timeData);
+
+  // 拖影效果
+  visCtx.fillStyle='rgba(10,11,9,0.25)';
+  visCtx.fillRect(0,0,W,H);
+
+  if(visMode==='circular'){
+    // ── 环形频谱 ──
+    const bars=128;
+    const step=Math.floor(bufLen/bars);
+    const baseR=Math.min(W,H)*0.22;
+
+    for(let i=0;i<bars;i++){
+      const val=freqData[i*step]/255;
+      const height=baseR+val*baseR*0.9;
+      const angle=(i*Math.PI*2)/bars-Math.PI/2;
+      const x1=cx+Math.cos(angle)*baseR;
+      const y1=cy+Math.sin(angle)*baseR;
+      const x2=cx+Math.cos(angle)*height;
+      const y2=cy+Math.sin(angle)*height;
+      const hue=i*(360/bars)+val*50;
+      const alpha=0.3+val*0.7;
+      visCtx.beginPath();
+      visCtx.moveTo(x1,y1);
+      visCtx.lineTo(x2,y2);
+      visCtx.lineWidth=Math.max(2,3*devicePixelRatio*(0.3+val));
+      visCtx.strokeStyle=`hsla(${hue},75%,58%,${alpha.toFixed(2)})`;
+      visCtx.lineCap='round';
+      visCtx.stroke();
+    }
+
+    // 中心光环
+    visCtx.beginPath();
+    visCtx.arc(cx,cy,baseR*0.95,0,Math.PI*2);
+    visCtx.strokeStyle='rgba(168,224,96,0.12)';
+    visCtx.lineWidth=1;
+    visCtx.stroke();
+
+    // 低频能量爆闪
+    const bassE=freqData.slice(0,10).reduce((a,b)=>a+b,0)/10;
+    if(bassE>200){
+      const glow=(bassE-200)/55*0.4;
+      visCtx.beginPath();
+      visCtx.arc(cx,cy,baseR*0.6,0,Math.PI*2);
+      const grd=visCtx.createRadialGradient(cx,cy,0,cx,cy,baseR*0.6);
+      grd.addColorStop(0,`rgba(255,255,255,${glow.toFixed(3)})`);
+      grd.addColorStop(1,'rgba(255,255,255,0)');
+      visCtx.fillStyle=grd;
+      visCtx.fill();
+    }
+
+    // 外圈辉光粒子
+    const midE=freqData.slice(10,60).reduce((a,b)=>a+b,0)/50;
+    if(midE>100){
+      const count=Math.floor(midE/40);
+      for(let i=0;i<count;i++){
+        const a=Math.random()*Math.PI*2;
+        const r=baseR*1.05+Math.random()*baseR*0.3;
+        visCtx.beginPath();
+        visCtx.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r,1.5*devicePixelRatio,0,Math.PI*2);
+        visCtx.fillStyle=`rgba(168,224,96,${(0.15+Math.random()*0.25).toFixed(2)})`;
+        visCtx.fill();
+      }
+    }
+
+  } else if(visMode==='bars'){
+    // ── 柱状频谱 ──
+    const count=Math.min(bufLen,Math.floor(W/(3*devicePixelRatio)));
+    const step=Math.max(1,Math.floor(bufLen/count));
+    const barW=W/count;
+    for(let i=0;i<count;i++){
+      const val=freqData[i*step]/255;
+      const h=val*H*0.85;
+      const hue=85+i*(180/count);
+      visCtx.fillStyle=`hsla(${hue},70%,58%,0.7)`;
+      visCtx.fillRect(i*barW,H-h,Math.max(barW-1,1),h);
+    }
+
+  } else if(visMode==='wave'){
+    // ── 波形 ──
+    visCtx.beginPath();
+    const sliceW=W/bufLen;
+    for(let i=0;i<bufLen;i++){
+      const v=timeData[i]/128.0;
+      const y=v*H/2;
+      i===0?visCtx.moveTo(0,y):visCtx.lineTo(i*sliceW,y);
+    }
+    visCtx.strokeStyle='rgba(168,224,96,0.6)';
+    visCtx.lineWidth=1.5*devicePixelRatio;
+    visCtx.stroke();
+
+    // 镜像波形
+    visCtx.beginPath();
+    for(let i=0;i<bufLen;i++){
+      const v=timeData[i]/128.0;
+      const y=H-(v*H/2);
+      i===0?visCtx.moveTo(0,y):visCtx.lineTo(i*sliceW,y);
+    }
+    visCtx.strokeStyle='rgba(96,200,160,0.3)';
+    visCtx.lineWidth=1*devicePixelRatio;
+    visCtx.stroke();
+  }
+}
+
+// ── Config persist ──
+function loadCfg(){
+  const k=localStorage.getItem('la_key')||'';
+  const m=localStorage.getItem('la_model')||'deepseek-chat';
+  document.getElementById('api-key').value=k;
+  document.getElementById('model-sel').value=m;
+  if(k) checkKey();
+}
+function saveCfg(){
+  localStorage.setItem('la_key',document.getElementById('api-key').value.trim());
+  localStorage.setItem('la_model',document.getElementById('model-sel').value);
+}
+// 页面加载时恢复，输入/切换时保存
+window.addEventListener('DOMContentLoaded',loadCfg);
+
+// ── Key check ──
+function checkKey(){
+  const v=document.getElementById('api-key').value.trim(),el=document.getElementById('api-status');
+  saveCfg();
+  if(!v){el.textContent='';el.className='api-status';return}
+  el.textContent=v.startsWith('sk-')&&v.length>20?'✓ 已保存':'格式似乎不对';
+  el.className='api-status '+(v.startsWith('sk-')&&v.length>20?'ok':'err');
+}
+
+// ── Main analyze ──
+async function doAnalyze(){
+  const f=window._af;if(!f)return;
+  const btn=document.getElementById('abtn');
+  btn.disabled=true;resetSteps();
+
+  try{
+    step(0,'active');setSt('<span class="spin"></span>上传中...');
+    const fd=new FormData();
+    fd.append('file',f);
+    fd.append('api_key',document.getElementById('api-key').value.trim());
+    fd.append('model',document.getElementById('model-sel').value);
+
+    step(1,'active');setSt('<span class="spin"></span>librosa 专业特征提取中（数百维）...');
+    const res=await fetch('/api/analyze',{method:'POST',body:fd});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.detail||'服务器错误');
+    step(1,'done');step(2,'done');step(3,'done');
+
+    step(4,'active');
+    renderAll(data.features,data.analysis);
+    step(4,'done');
+    setSt(data.analysis?'librosa + AI 深度分析完成 ✓':'librosa 特征提取完成 ✓（未提供 API Key，跳过 AI 分析）');
+    document.getElementById('results').classList.remove('hidden');
+    goTab('overview',document.querySelector('.tab'));
+  }catch(e){
+    setSt('错误：'+e.message,true);resetSteps();
+  }
+  btn.disabled=false;btn.textContent='重新分析';
+}
+
+// ── Render ──
+function renderAll(fe,ai){
+  // Overview
+  if(ai){
+    document.getElementById('ov-sum').textContent=ai.summary||'—';
+  } else {
+    document.getElementById('ov-sum').innerHTML='<span class="no-ai">未提供 API Key，以下为 librosa 原始特征数据。填入 Key 后可获得 AI 深度解读。</span>';
+  }
+  document.getElementById('ov-key').textContent=fe.key_full||fe.key;
+  document.getElementById('ov-scale').textContent=fe.scale==='major'?'自然大调':'自然小调';
+  document.getElementById('ov-bpm').textContent=fe.bpm;
+  document.getElementById('ov-feel').textContent=ai?.tempoFeel?.split('·')[0]?.trim()||bpmLabel(fe.bpm);
+  const dr=fe.dynamic_range_db;
+  document.getElementById('ov-dyn').textContent=dr+'dB';
+  document.getElementById('ov-dyn-s').textContent=dr<6?'过度压缩':dr<10?'标准压缩':dr<16?'自然动态':'宽动态';
+  const dc=fe.danceability;
+  document.getElementById('ov-dance').textContent=dc.toFixed(2);
+  document.getElementById('ov-dance-s').textContent=dc>2?'极高可舞性':dc>1.2?'较高':dc>0.6?'中等':'较低';
+
+  const ob=document.getElementById('ov-badges');ob.innerHTML='';
+  [ai?.music_style,fe.duration+'s',`质心 ${fe.spectral_centroid_mean}Hz`,`不和谐度 ${fe.dissonance}`].filter(Boolean).forEach((t,i)=>{
+    const b=document.createElement('span');b.className='bdg'+(i===0?' hi':'');b.textContent=t;ob.appendChild(b);
+  });
+
+  document.getElementById('ov-style').textContent=ai?.music_style||'—';
+  const sim=document.getElementById('ov-similar');sim.innerHTML='';
+  (ai?.similar_artists||[]).forEach(a=>{const s=document.createElement('span');s.className='sim-tag';s.textContent=a;sim.appendChild(s)});
+  document.getElementById('ov-notes').textContent=ai?.production_notes||`谱平坦度 ${fe.spectral_flatness_mean}，谱流量 ${fe.spectral_flux_mean}，动态范围 ${fe.dynamic_range_db}dB`;
+  document.getElementById('ov-structure').textContent=ai?.structure_analysis||'—';
+
+  // Dynamic Contour
+  drawDynamicContour(fe.dynamic_contour||[]);
+
+  // Theory
+  document.getElementById('th-key-ana').textContent=ai?.key_harmony_analysis||ai?.key_analysis||`调性 ${fe.key_full}，强度 ${fe.key_strength}，不和谐度 ${fe.dissonance}`;
+  document.getElementById('th-rhy-ana').textContent=ai?.rhythm_groove_analysis||ai?.rhythm_analysis||`BPM ${fe.bpm}，规律性 ${fe.rhythm_regularity}，可舞性 ${fe.danceability}`;
+  const cr=document.getElementById('th-chords');cr.innerHTML='';
+  (ai?.chords||[]).forEach((c,i)=>{const el=document.createElement('span');el.className='chord'+(i===0?' root':'');el.textContent=c;cr.appendChild(el)});
+  document.getElementById('th-prog').textContent=ai?.chord_progression_desc||'—';
+  document.getElementById('th-mel-ana').textContent=ai?.melody_narrative_analysis||ai?.melody_analysis||`基频均值 ${fe.pitch_mean_hz}Hz，范围 ${fe.pitch_range_hz}Hz，旋律性 ${fe.melodic_strength}`;
+  drawChromaWheel(fe.chroma||[],['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].indexOf(fe.key));
+  drawPianoRoll(fe.chroma||[]);
+
+  // Timbre
+  document.getElementById('tb-ana').textContent=ai?.timbre_texture_analysis||ai?.timbre_analysis||`谱质心 ${fe.spectral_centroid_mean}±${fe.spectral_centroid_std}Hz，谱平坦度 ${fe.spectral_flatness_mean}，谱复杂度 ${fe.spectral_complexity_mean}`;
+  document.getElementById('tb-dyn-ana').textContent=ai?.dynamics_emotion_analysis||ai?.dynamics_analysis||`RMS ${fe.rms_mean}±${fe.rms_std}，响度 ${fe.loudness_db}dB，动态范围 ${fe.dynamic_range_db}dB`;
+  const fq=document.getElementById('th-freq8');fq.innerHTML='';
+  const b8labels={'sub_bass_20_60':'次低频 20-60Hz','bass_60_250':'低频 60-250Hz','low_mid_250_500':'中低频 250-500Hz','mid_500_2k':'中频 500-2kHz','upper_mid_2k_4k':'中高频 2-4kHz','presence_4k_8k':'存在感 4-8kHz','brilliance_8k_16k':'亮度 8-16kHz','air_16k_20k':'空气感 16-20kHz'};
+  Object.entries(fe.freq_bands_8||{}).forEach(([k,v],i)=>{
+    fq.insertAdjacentHTML('beforeend',`<div class="bar-row"><span class="bar-lbl">${b8labels[k]||k}</span><div class="bar-tr"><div class="bar-fl" style="width:${v}%;background:${B8COLORS[i%8]}"></div></div><span class="bar-val">${v}%</span></div>`);
+  });
+  document.getElementById('tb-freq-prof').textContent=ai?.freq_landscape||ai?.freq_profile||'—';
+
+  // Emotion
+  const eg=document.getElementById('em-grid');eg.innerHTML='';
+  if(ai?.emotions){
+    [...ai.emotions].sort((a,b)=>b.score-a.score).forEach((em,i)=>{
+      const c=CMAP[em.color]||'#60c8a0',el=document.createElement('div');
+      el.className='emo'+(i===0?' top':'');
+      el.innerHTML=`<div class="emo-nm">${em.name}</div><div class="emo-tr"><div class="emo-fl" style="width:${em.score}%;background:${c}"></div></div><div class="emo-pct">${em.score}%</div><div class="emo-desc">${em.desc||''}</div>`;
+      eg.appendChild(el);
+    });
+  } else {
+    eg.innerHTML=`<div class="no-ai" style="grid-column:1/-1">需要 API Key 才能获得情感分析</div>`;
+  }
+  const kws=document.getElementById('em-kws');kws.innerHTML='';
+  (ai?.keywords||[]).forEach(k=>{const s=document.createElement('span');s.className='kw';s.textContent=k;kws.appendChild(s)});
+
+  // Instruments
+  const il=document.getElementById('inst-list');il.innerHTML='';
+  if(ai?.instruments){
+    ai.instruments.forEach((ins,i)=>{
+      il.insertAdjacentHTML('beforeend',`<div class="inst-item"><div class="inst-row"><span class="inst-nm">${ins.name}</span><div class="bar-tr" style="flex:1;margin:0 8px"><div class="bar-fl" style="width:${ins.confidence}%;background:${ICOLORS[i%4]}"></div></div><span class="bar-val">${ins.confidence}%</span></div><div class="inst-rsn">${ins.reason||''}</div></div>`);
+    });
+  } else {
+    il.innerHTML=`<div class="no-ai">需要 API Key 才能获得乐器识别</div>`;
+  }
+
+  // Tech
+  const tg=document.getElementById('tech-g');tg.innerHTML='';
+  [['BPM',fe.bpm],['调性',fe.key_full],['时长',fe.duration+'s'],['节拍数',fe.beats_count],
+   ['节奏规律',fe.rhythm_regularity],['可舞性',fe.danceability],['调性强度',fe.key_strength],
+   ['不和谐度',fe.dissonance],['谱质心',fe.spectral_centroid_mean+'Hz'],['谱滚降',fe.spectral_rolloff_mean+'Hz'],
+   ['谱平坦度',fe.spectral_flatness_mean],['谱流量',fe.spectral_flux_mean],
+   ['谱复杂度',fe.spectral_complexity_mean],['RMS均值',fe.rms_mean],
+   ['动态范围',fe.dynamic_range_db+'dB'],['响度',fe.loudness_db+'dB'],
+   ['基频均值',fe.pitch_mean_hz+'Hz'],['旋律性',fe.melodic_strength],
+   ['ZCR均值',fe.zcr_mean],['明亮度比',fe.brightness_ratio]
+  ].forEach(([k,v])=>tg.insertAdjacentHTML('beforeend',`<div class="tech-i"><div class="tech-k">${k}</div><div class="tech-v">${v}</div></div>`));
+
+  const mb=document.getElementById('mfcc-bars');mb.innerHTML='';
+  const mm=fe.mfcc_mean||[];
+  const mx=Math.max(...mm.map(Math.abs))||1;
+  mm.slice(0,20).forEach((v,i)=>{
+    const pct=Math.abs(v)/mx*100;
+    mb.insertAdjacentHTML('beforeend',`<div class="bar-row"><span class="bar-lbl">MFCC[${i}] = ${v}</span><div class="bar-tr"><div class="bar-fl" style="width:${pct.toFixed(0)}%;background:${v>0?'#60c8a0':'#e06050'}"></div></div></div>`);
+  });
+
+  const cb=document.getElementById('chroma-bars');cb.innerHTML='';
+  (fe.chroma||[]).forEach((v,i)=>{
+    cb.insertAdjacentHTML('beforeend',`<div class="bar-row"><span class="bar-lbl">${NOTES[i]}</span><div class="bar-tr"><div class="bar-fl" style="width:${(v*100).toFixed(0)}%;background:hsl(${i*30},65%,55%)"></div></div><span class="bar-val">${(v*100).toFixed(0)}%</span></div>`);
+  });
+}
+
+// ── Dynamic Contour Chart ──
+function drawDynamicContour(contour){
+  const cvs=document.getElementById('contour-c'),ctx=cvs.getContext('2d');
+  const W=cvs.width,H=cvs.height;
+  ctx.clearRect(0,0,W,H);
+
+  if(!contour.length) return;
+
+  const padL=40,padR=20,padT=15,padB=25;
+  const gW=W-padL-padR,gH=H-padT-padB;
+  const maxV=Math.max(...contour)||1;
+  const minV=Math.min(...contour);
+  const range=maxV-minV||1;
+
+  // 网格线
+  ctx.strokeStyle='rgba(255,255,255,0.05)';
+  ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=padT+gH*(1-i/4);
+    ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+gW,y);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.25)';
+    ctx.font='9px IBM Plex Mono,monospace';
+    ctx.textAlign='right';
+    ctx.fillText((minV+range*i/4).toFixed(3),padL-5,y+3);
+  }
+
+  // 数据点坐标
+  const pts=contour.map((v,i)=>({
+    x:padL+i/(contour.length-1)*gW,
+    y:padT+gH*(1-(v-minV)/range)
+  }));
+
+  // 渐变填充
+  const grd=ctx.createLinearGradient(0,padT,0,padT+gH);
+  grd.addColorStop(0,'rgba(168,224,96,0.2)');
+  grd.addColorStop(1,'rgba(168,224,96,0.01)');
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x,padT+gH);
+  pts.forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.lineTo(pts[pts.length-1].x,padT+gH);
+  ctx.closePath();
+  ctx.fillStyle=grd;
+  ctx.fill();
+
+  // 线条
+  ctx.beginPath();
+  pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle='#a8e060';
+  ctx.lineWidth=2;
+  ctx.lineJoin='round';
+  ctx.stroke();
+
+  // 数据点 + X轴标签
+  pts.forEach((p,i)=>{
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,3,0,Math.PI*2);
+    ctx.fillStyle='#a8e060';
+    ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.3)';
+    ctx.font='8px IBM Plex Mono,monospace';
+    ctx.textAlign='center';
+    ctx.fillText((i*10)+'%',p.x,padT+gH+14);
+  });
+
+  // 标注峰值和谷值
+  const maxIdx=contour.indexOf(maxV),minIdx=contour.indexOf(minV);
+  if(maxIdx!==minIdx){
+    ctx.fillStyle='rgba(168,224,96,0.7)';
+    ctx.font='500 9px IBM Plex Mono,monospace';
+    ctx.textAlign='center';
+    ctx.fillText('峰值',pts[maxIdx].x,pts[maxIdx].y-8);
+    ctx.fillStyle='rgba(224,96,80,0.7)';
+    ctx.fillText('谷值',pts[minIdx].x,pts[minIdx].y+14);
+  }
+}
+
+function drawChromaWheel(chroma,ki){
+  const cvs=document.getElementById('chroma-c'),ctx=cvs.getContext('2d');
+  const W=cvs.width,H=cvs.height,cx=W/2,cy=H/2,R=W/2-20;
+  ctx.clearRect(0,0,W,H);
+  chroma.forEach((v,i)=>{
+    const sa=(i-.5)*2*Math.PI/12-Math.PI/2,ea=(i+.5)*2*Math.PI/12-Math.PI/2;
+    const r2=R*(.2+.8*v),hue=i*30,al=.25+.75*v;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r2,sa,ea);ctx.closePath();
+    ctx.fillStyle=`hsla(${hue},68%,56%,${al.toFixed(2)})`;ctx.fill();
+    const mid=(sa+ea)/2,lr=R+13,lx=cx+lr*Math.cos(mid),ly=cy+lr*Math.sin(mid);
+    ctx.fillStyle=i===ki?'#a8e060':'rgba(255,255,255,.4)';
+    ctx.font=`${i===ki?'500':'400'} 10px IBM Plex Mono,monospace`;
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(NOTES[i],lx,ly);
+  });
+  ctx.fillStyle='rgba(255,255,255,.65)';ctx.font='500 11px IBM Plex Mono,monospace';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(ki>=0&&ki<12?NOTES[ki]:'?',cx,cy);
+}
+
+function drawPianoRoll(chroma){
+  const el=document.getElementById('piano-r');el.innerHTML='';
+  const mx=Math.max(...chroma)||1;
+  chroma.forEach((v,i)=>{
+    const d=document.createElement('div');d.className='pr-b';
+    d.style.cssText=`height:${Math.max(Math.round(v/mx*100),4)}%;background:hsl(${i*30},68%,56%);opacity:${.35+.65*v}`;
+    d.title=NOTES[i]+' '+(v*100).toFixed(0)+'%';el.appendChild(d);
+  });
+}
+
+function bpmLabel(b){
+  if(b<66) return 'Largo · 宽广';if(b<76) return 'Adagio · 柔板';
+  if(b<108) return 'Andante · 行板';if(b<120) return 'Moderato · 中板';
+  if(b<156) return 'Allegro · 快板';return 'Presto · 急板';
+}
+
+function setSt(m,e=false){const el=document.getElementById('status');el.innerHTML=m;el.className='status'+(e?' err':'')}
+function resetSteps(){for(let i=0;i<5;i++) document.getElementById('s'+i).className='step'}
+function step(i,c){document.getElementById('s'+i).className='step '+c}
+function goTab(n,b){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+  if(b)b.classList.add('on');
+  document.getElementById('panel-'+n).classList.add('on');
+}
+</script>
+</body>
+</html>
