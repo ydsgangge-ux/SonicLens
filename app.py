@@ -296,6 +296,7 @@ def _extract_json_fields(raw: str, exc: json.JSONDecodeError) -> dict:
 
 
 
+def analyze_with_ai(features, filename, api_key, model):
     # 初始化 OpenAI 客户端
     if model in DEEPSEEK_MODELS:
         client = OpenAI(
@@ -425,27 +426,55 @@ ZCR：{f['zcr_mean']}±{f['zcr_std']}
 async def root():
     return FileResponse("static/index.html")
 
+# 支持的音频扩展名（快速白名单，命中即直接用）
+AUDIO_EXTS = {".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".opus",
+              ".aiff", ".aif", ".wma", ".wv", ".ape", ".caf", ".webm", ".mp4", ".amr"}
+
+def _sniff_audio_ext(data: bytes):
+    """通过文件头魔数识别真实音频格式，兼容无扩展名 / 扩展名错误的情况"""
+    if len(data) < 12:
+        return None
+    if data[:4] == b"RIFF" and data[8:12] == b"WAVE":
+        return ".wav"
+    if data[:4] == b"FORM" and data[8:12] in (b"AIFF", b"AIFC"):
+        return ".aiff"
+    if data[:4] == b"fLaC":
+        return ".flac"
+    if data[:4] == b"OggS":
+        return ".ogg"
+    if data[:4] == b"ftyp":
+        return ".m4a"
+    if data[:3] == b"ID3" or data[:2] in (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2"):
+        return ".mp3"
+    return None
+
+
 @app.post("/api/analyze")
 async def analyze(
     file: UploadFile = File(...),
     api_key: str = Form(default=""),
     model: str = Form(default="deepseek-chat")
 ):
-    allowed = {".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".opus"}
-    suffix = Path(file.filename).suffix.lower()
-    if suffix not in allowed:
-        raise HTTPException(400, f"不支持的格式: {suffix}")
+    raw = await file.read()
+    filename = file.filename or "audio"
+    suffix = Path(filename).suffix.lower()
+    ext = suffix if suffix in AUDIO_EXTS else _sniff_audio_ext(raw)
+    if ext is None:
+        raise HTTPException(
+            400,
+            "无法识别的音频格式，请上传 MP3 / WAV / FLAC / OGG / M4A / AAC / OPUS 等常见音频文件",
+        )
 
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(await file.read())
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        tmp.write(raw)
         tmp_path = tmp.name
 
     try:
         features   = extract_features(tmp_path)
         ai_result  = None
         if api_key.strip():
-            ai_result = analyze_with_ai(features, file.filename, api_key.strip(), model)
-        return {"success": True, "filename": file.filename, "features": features, "analysis": ai_result}
+            ai_result = analyze_with_ai(features, filename, api_key.strip(), model)
+        return {"success": True, "filename": filename, "features": features, "analysis": ai_result}
     except Exception as e:
         raise HTTPException(500, f"分析失败: {str(e)}\n{traceback.format_exc()}")
     finally:
@@ -457,4 +486,6 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    # reload=False：在该环境下 reload 模式的 worker 子进程无法正常就绪，
+    # 会导致服务进程在跑、端口已绑定，但浏览器始终连不上。
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=False)
