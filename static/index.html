@@ -571,7 +571,13 @@ async function doAnalyze(){
     document.getElementById('results').classList.remove('hidden');
     goTab('overview',document.querySelector('.tab'));
   }catch(e){
-    setSt('错误：'+e.message,true);resetSteps();
+    setSt('错误：'+e.message,true);
+    if(e.message.includes('无法识别的音频格式')){
+      document.getElementById('status').innerHTML='<span style="color:var(--coral)">✗ 无法识别的音频格式</span><br><span style="font-size:.6rem;color:var(--txt3)">支持格式：MP3 · WAV · FLAC · OGG · M4A · AAC · OPUS · WMA · AIFF · WebM<br>提示：如果你确定是音频文件，请尝试用 .mp3 或 .wav 后缀重命名后重试</span>';
+    } else if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')){
+      document.getElementById('status').innerHTML='<span style="color:var(--coral)">✗ 无法连接服务器</span><br><span style="font-size:.6rem;color:var(--txt3)">请确认服务正在运行（终端窗口未关闭），然后刷新页面重试</span>';
+    }
+    resetSteps();
   }
   btn.disabled=false;btn.textContent='重新分析';
 }

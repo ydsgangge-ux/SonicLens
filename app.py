@@ -3,7 +3,7 @@
 Windows / macOS / Linux 全平台兼容
 运行: python app.py   访问: http://localhost:8000
 """
-import os, re, json, tempfile, traceback
+import os, re, json, tempfile, traceback, logging
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +21,10 @@ from openai import OpenAI
 app = FastAPI(title="librosa 音频分析器")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# 日志：打印请求路径和耗时
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+log = logging.getLogger("librosa_app")
 
 
 # ─────────────────────────────────────────────────────────
@@ -434,18 +438,40 @@ def _sniff_audio_ext(data: bytes):
     """通过文件头魔数识别真实音频格式，兼容无扩展名 / 扩展名错误的情况"""
     if len(data) < 12:
         return None
+    # WAV：RIFF 容器 + WAVE 子类型
     if data[:4] == b"RIFF" and data[8:12] == b"WAVE":
         return ".wav"
+    # AIFF / AIFC
     if data[:4] == b"FORM" and data[8:12] in (b"AIFF", b"AIFC"):
         return ".aiff"
+    # FLAC
     if data[:4] == b"fLaC":
         return ".flac"
+    # OGG
     if data[:4] == b"OggS":
         return ".ogg"
-    if data[:4] == b"ftyp":
+    # M4A / MP4 (ISOBMFF 容器：字节 4-7 是 box type)
+    if len(data) >= 8 and data[4:8] == b"ftyp":
         return ".m4a"
+    # MP3：ID3v2 标签头 或 MPEG 帧同步字
     if data[:3] == b"ID3" or data[:2] in (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2"):
         return ".mp3"
+    # WMA / ASF (Windows Media Audio)
+    # ASF 头 GUID: 30 26 B2 75 8E 66 CF 11 ...
+    if data[:6] == b"\x30\x26\xb2\x75\x8e\x66":
+        return ".wma"
+    # WebM / Matroska (EBML 头)
+    if data[:4] == b"\x1a\x45\xdf\xa3":
+        return ".webm"
+    # AMR
+    if data[:6] in (b"#!AMR\n", b"#!AMR\x0a"):
+        return ".amr"
+    # CAF (Apple Core Audio Format)
+    if data[:4] == b"caff":
+        return ".caf"
+    # VOC (Creative Voice)
+    if data[:4] == b"VOC\x1a" or data[:4] == b"VOC\x1a\x00":
+        return ".voc"
     return None
 
 
@@ -458,7 +484,9 @@ async def analyze(
     raw = await file.read()
     filename = file.filename or "audio"
     suffix = Path(filename).suffix.lower()
+    log.info("POST /api/analyze  file=%s  suffix=%s  size=%d", filename, suffix, len(raw))
     ext = suffix if suffix in AUDIO_EXTS else _sniff_audio_ext(raw)
+    log.info("  ext detection: suffix=%s  sniff=%s  final=%s", suffix, _sniff_audio_ext(raw) if suffix not in AUDIO_EXTS else "N/A", ext)
     if ext is None:
         raise HTTPException(
             400,
