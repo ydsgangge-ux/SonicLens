@@ -183,8 +183,9 @@ header{display:flex;align-items:flex-start;justify-content:space-between;gap:1re
       <input class="api-in" id="api-key" type="password" placeholder="sk-..." oninput="checkKey()">
     </div>
     <select class="model-sel" id="model-sel" onchange="saveCfg()">
-      <option value="deepseek-chat">DeepSeek Chat（推荐·极便宜）</option>
-      <option value="deepseek-reasoner">DeepSeek R1（深度推理）</option>
+      <option value="deepseek-flash">DeepSeek Flash（V4 · 极速便宜）</option>
+      <option value="deepseek-pro">DeepSeek Pro（V4 · 深度推理）</option>
+      <option value="deepseek-chat">DeepSeek Chat（旧版兼容）</option>
       <option value="gpt-4o-mini">GPT-4o mini</option>
       <option value="gpt-4o">GPT-4o</option>
       <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
@@ -524,7 +525,7 @@ function drawVisualizer(){
 // ── Config persist ──
 function loadCfg(){
   const k=localStorage.getItem('la_key')||'';
-  const m=localStorage.getItem('la_model')||'deepseek-chat';
+  const m=localStorage.getItem('la_model')||'deepseek-flash';
   document.getElementById('api-key').value=k;
   document.getElementById('model-sel').value=m;
   if(k) checkKey();

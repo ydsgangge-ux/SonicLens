@@ -1,0 +1,10 @@
+INFO:     Started server process [32076]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-07-23 19:43:03,526 [INFO] POST /api/analyze  file=dy_test.wav  suffix=.wav  size=132344
+2026-07-23 19:43:03,532 [INFO]   ext detection: suffix=.wav  sniff=N/A  final=.wav
+2026-07-23 19:43:20,388 [INFO] POST /api/analyze  file=dy_noext  suffix=  size=132344
+2026-07-23 19:43:20,390 [INFO]   ext detection: suffix=  sniff=.wav  final=.wav
+2026-07-23 19:43:24,891 [INFO] POST /api/analyze  file=dy_notaudio.txt  suffix=.txt  size=14
+2026-07-23 19:43:24,892 [INFO]   ext detection: suffix=.txt  sniff=None  final=None

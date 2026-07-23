@@ -130,7 +130,7 @@ python app.py
 
 | 提供商 | 获取地址 | 模型 | 单次成本 |
 |--------|----------|------|----------|
-| **DeepSeek** | [platform.deepseek.com](https://platform.deepseek.com/api_keys) | deepseek-chat | ~&yen;0.01 |
+| **DeepSeek** | [platform.deepseek.com](https://platform.deepseek.com/api_keys) | deepseek-flash | ~&yen;0.01 |
 | OpenAI | [platform.openai.com](https://platform.openai.com/api-keys) | gpt-4o-mini | ~$0.02 |
 
 ---
@@ -193,7 +193,7 @@ librosa_analyzer/
 |------|------|------|------|
 | `file` | File | Yes | 音频文件 |
 | `api_key` | String | No | DeepSeek / OpenAI API Key |
-| `model` | String | No | 模型名称，默认 `deepseek-chat` |
+| `model` | String | No | 模型名称，默认 `deepseek-flash` |
 
 **响应示例：**
 
@@ -246,7 +246,7 @@ librosa_analyzer/
 <summary><b>AI 分析报错？</b></summary>
 
 1. 确认 API Key 正确且账户有余额
-2. DeepSeek 推荐使用 `deepseek-chat` 模型，成本极低
+2. DeepSeek 推荐使用 `deepseek-flash` 模型，成本极低
 3. 检查网络连接（需能访问对应 API 服务）
 </details>
 

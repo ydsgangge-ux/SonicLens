@@ -251,7 +251,7 @@ def extract_features(path: str) -> dict:
 # AI 深度分析（DeepSeek / OpenAI 兼容接口）
 # ─────────────────────────────────────────────────────────
 
-DEEPSEEK_MODELS = {"deepseek-chat", "deepseek-reasoner"}
+DEEPSEEK_MODELS = {"deepseek-flash", "deepseek-pro", "deepseek-chat", "deepseek-reasoner"}
 
 
 def _repair_json(raw: str) -> str:
@@ -479,7 +479,7 @@ def _sniff_audio_ext(data: bytes):
 async def analyze(
     file: UploadFile = File(...),
     api_key: str = Form(default=""),
-    model: str = Form(default="deepseek-chat")
+    model: str = Form(default="deepseek-flash")
 ):
     raw = await file.read()
     filename = file.filename or "audio"
